@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { PayPalHostedFieldsProvider, PayPalHostedField, usePayPalHostedFields } from "@paypal/react-paypal-js";
 import api from '../api/axios';
 import { useLanguage } from '../LanguageContext';
+import { capturePayPalOrderAction, createPayPalOrderAction } from '../actions/payment.actions';
 
 const SubmitButton = ({ amount, donorName, donorEmail, setError }) => {
     const hostedFields = usePayPalHostedFields();
@@ -19,17 +20,17 @@ const SubmitButton = ({ amount, donorName, donorEmail, setError }) => {
             // This internally calls createOrder on the provider, tokenizes the card, and returns the orderId
             const submitResponse = await hostedFields.submit();
 
-            // Capture order on backend
-            const resCapture = await api.post('/payments/paypal/capture-order', {
+            // Capture order on backend via Server Action (hides API from browser Network tab)
+            const resCapture = await capturePayPalOrderAction({
                 orderId: submitResponse.orderId,
                 payerName: donorName,
                 payerEmail: donorEmail
             });
 
-            if (resCapture.status === 200 && resCapture.data.status === 'ok') {
+            if (resCapture.success && resCapture.status === 200 && resCapture.data?.status === 'ok') {
                 window.location.href = '/payment-success';
             } else {
-                setError("Payment capture failed.");
+                setError(resCapture.message || "Payment capture failed.");
             }
         } catch (err) {
             console.error("Hosted Fields Submit Error:", err);
@@ -60,13 +61,13 @@ export default function PayPalCheckoutForm({ amount, donorName, donorEmail, onCa
 
     const createOrder = async () => {
         try {
-            const res = await api.post('/payments/paypal/create-order', {
+            const res = await createPayPalOrderAction({
                 amount: Number(amount),
                 payerName: donorName,
                 payerEmail: donorEmail,
                 currency: 'eur'
             });
-            if (res.status === 200 && res.data.status === 'ok') {
+            if (res.success && res.status === 200 && res.data?.status === 'ok') {
                 return res.data.data.orderId;
             }
             throw new Error("Failed to create order");
