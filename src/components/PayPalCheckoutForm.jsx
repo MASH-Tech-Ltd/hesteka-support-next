@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { PayPalHostedFieldsProvider, PayPalHostedField, usePayPalHostedFields } from "@paypal/react-paypal-js";
 import api from '../api/axios';
 import { useLanguage } from '../LanguageContext';
-import { capturePayPalOrderAction } from '../actions/payment.actions';
 
 const SubmitButton = ({ amount, donorName, donorEmail, setError }) => {
     const hostedFields = usePayPalHostedFields();
@@ -20,17 +19,17 @@ const SubmitButton = ({ amount, donorName, donorEmail, setError }) => {
             // This internally calls createOrder on the provider, tokenizes the card, and returns the orderId
             const submitResponse = await hostedFields.submit();
 
-            // Capture order on backend via SSR Server Action
-            const resCapture = await capturePayPalOrderAction({
+            // Capture order on backend
+            const resCapture = await api.post('/payments/paypal/capture-order', {
                 orderId: submitResponse.orderId,
                 payerName: donorName,
                 payerEmail: donorEmail
             });
 
-            if (resCapture.success && resCapture.status === 200 && resCapture.data?.status === 'ok') {
+            if (resCapture.status === 200 && resCapture.data.status === 'ok') {
                 window.location.href = '/payment-success';
             } else {
-                setError(resCapture.message || "Payment capture failed.");
+                setError("Payment capture failed.");
             }
         } catch (err) {
             console.error("Hosted Fields Submit Error:", err);

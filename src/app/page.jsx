@@ -15,7 +15,6 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import StripeCheckoutForm from "../components/StripeCheckoutForm";
 import PayPalCheckoutForm from "../components/PayPalCheckoutForm";
 import { useLanguage } from "../LanguageContext";
-import { initiateStripeDonation } from "../actions/payment.actions";
 
 const PayPalIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="none" className={className}>
@@ -97,7 +96,7 @@ export default function PaymentPage() {
 
     try {
       if (method === "stripe") {
-        const res = await initiateStripeDonation({
+        const res = await api.post("/donations/stripe/initiate", {
           amount: Number(amount),
           donorName: donorName,
           donorEmail: donorEmail,
@@ -105,11 +104,11 @@ export default function PaymentPage() {
           currency: "eur",
         });
 
-        if (res.success && res.status === 200 && res.data?.status === "ok" && res.data?.data?.clientSecret) {
+        if (res.status === 200 && res.data.status === "ok" && res.data.data.clientSecret) {
           setClientSecret(res.data.data.clientSecret);
           setPaymentIntentId(res.data.data.paymentIntentId);
         } else {
-          setError(res.message || t("failedInitiate"));
+          setError(res.data.message || t("failedInitiate"));
         }
       } else if (method === "paypal") {
         setShowPayPal(true);
